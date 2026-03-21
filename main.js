@@ -180,7 +180,7 @@ async function main() {
     			connecting = true;
 			});
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTED, () => {
-    			adapter.log.info('Websocket reports CONNECTED (TV fully ready)');
+    			adapter.log.debug('Websocket reports CONNECTED (TV fully ready)');
     			connected = true;
     			connecting = false;
     			adapter.setState('info.connected', true, true);

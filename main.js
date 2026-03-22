@@ -44,11 +44,22 @@ var adapter = utils.Adapter({
     name: 'samsung',
 
     unload: function (callback) {
-        try {
+    /*    try {
             callback();
         } catch (e) {
             callback();
         }
+	*/
+		try {
+        	if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
+        	if (ConnectTimer) clearTimeout(ConnectTimer);
+        	if (onOffTimer) clearTimeout(onOffTimer);
+        	if (remoteHJ?.eventEmitter)  remoteHJ.eventEmitter.removeAllListeners();
+        	if (remoteHJ?.close) remoteHJ.close();
+    	} catch (e) {
+        	adapter.log.error("Error during unload: " + e);
+    	}
+		callback();
     },
 	
     stateChange: function (id, state) {
@@ -92,6 +103,7 @@ var adapter = utils.Adapter({
 //#####################################################################################
 //   M A I N   
 async function main() {
+	cnt = 0;
 	abortMain = false;
 
 //########### TYPE 'Samsung2016' ######################################################
@@ -156,16 +168,16 @@ async function main() {
 		if (!reachable) { 
 			adapter.log.debug(`${adapter.config.apiType}: TV unreachable → skipping connect attempt`); 
 			if (!checkOnOffTimer) { checkPowerOnOff(); }
-			return; // WICHTIG: main() NICHT ausführen
+			return; // IMPORTANT: do NOT execute main()
 		}
 
 		if (adapter.config.ip) {
             adapter.log.debug('Initializing HJ lib');
             deviceConfig.ip = adapter.config.ip;
+			if (remoteHJ?.eventEmitter) remoteHJ.eventEmitter.removeAllListeners();
             remoteHJ = new SamsungHJ(deviceConfig);
-			//createObjectsAndStates();  // neu 01.2026
 			
-			// Events kommen über den internen EventEmitter der SamsungTv-Klasse
+			// Events are received through the internal EventEmitter of the SamsungTv class
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTING, () => {
     			adapter.log.debug('Websocket reports CONNECTING');
   /*			    connected = true;
@@ -181,7 +193,8 @@ async function main() {
 			});
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTED, () => {
     			adapter.log.debug('Websocket reports CONNECTED (TV fully ready)');
-    			connected = true;
+    			cnt = 0;
+				connected = true;
     			connecting = false;
     			adapter.setState('info.connected', true, true);
 			});
@@ -192,7 +205,7 @@ async function main() {
 				abortMain = true;
     			adapter.setState('info.connected', false, true);
 
-      		// Reconnect starten, aber nur wenn nicht schon versucht wird
+      		// Start reconnect, but only if no reconnect attempt is already running
     			if (!connecting && !connectTimer) {
         			connectTimer = setTimeout(() => {
             			connectTimer = null;
@@ -278,7 +291,7 @@ async function call_main() {
     connecting = true;
     adapter.log.debug('call_main starting reconnect...');
     try {
-        await main();   // WICHTIG: await, damit Fehler gefangen werden
+        await main();   // IMPORTANT: use await so errors are caught
     } catch (err) {
         adapter.log.warn(`Reconnect failed: ${err.message}`);
     } finally {

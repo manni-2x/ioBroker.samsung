@@ -52,7 +52,7 @@ var adapter = utils.Adapter({
 	*/
 		try {
         	if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
-        	if (ConnectTimer) clearTimeout(ConnectTimer);
+        	if (connectTimer) clearTimeout(connectTimer);
         	if (onOffTimer) clearTimeout(onOffTimer);
         	if (remoteHJ?.eventEmitter)  remoteHJ.eventEmitter.removeAllListeners();
         	if (remoteHJ?.close) remoteHJ.close();

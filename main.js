@@ -44,12 +44,6 @@ var adapter = utils.Adapter({
     name: 'samsung',
 
     unload: function (callback) {
-    /*    try {
-            callback();
-        } catch (e) {
-            callback();
-        }
-	*/
 		try {
         	if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
         	if (connectTimer) clearTimeout(connectTimer);
@@ -180,14 +174,6 @@ async function main() {
 			// Events are received through the internal EventEmitter of the SamsungTv class
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTING, () => {
     			adapter.log.debug('Websocket reports CONNECTING');
-  /*			    connected = true;
-			    adapter.setState('info.connected', true, true);
-			});
-
-			remoteHJ.eventEmitter.on(SamsungTvEvents.DISCONNECTED, () => {
-    			adapter.log.warn('Websocket reports DISCONNECTED');
-    			connected = false;
-*/
 			// WebSocket ist offen, aber DUID/Handshake noch nicht abgeschlossen
     			connecting = true;
 			});

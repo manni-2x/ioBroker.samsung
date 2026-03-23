@@ -52,8 +52,9 @@ var adapter = utils.Adapter({
         	if (remoteHJ?.close) remoteHJ.close();
     	} catch (e) {
         	adapter.log.error("Error during unload: " + e);
-    	}
-		callback();
+    	} finally {
+			callback();
+		}
     },
 	
     stateChange: function (id, state) {

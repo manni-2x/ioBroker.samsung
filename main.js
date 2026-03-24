@@ -175,7 +175,7 @@ async function main() {
 			// Events are received through the internal EventEmitter of the SamsungTv class
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTING, () => {
     			adapter.log.debug('Websocket reports CONNECTING');
-			// WebSocket opened, but DUID/Handshake not completedn
+			// WebSocket opened, but DUID/Handshake not completed
     			connecting = true;
 			});
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTED, () => {

@@ -28,12 +28,14 @@ var cnt       = 0;        // new 11.2024
 var delayTime = 10000;    // new 11.2025
 let count     = 0;        // new 11.2024
 let powerOn   = false;
-let abortMain = false;
+let AbortMain = false;
+//const delay   = time => new Promise(res=>setTimeout(res,time));  // new 11.2024
 
 // --- Connection control (NEW) ---  //new 1.2026
-let connecting   = false;
-let connected    = false;
-let connectTimer = null;
+let Connecting   = false;
+let Connected    = false;
+let ConnectTimer = null;
+
 
 //######################################################################################
 //
@@ -52,10 +54,10 @@ var adapter = utils.Adapter({
     },
 	
     stateChange: function (id, state) {
+        !state.ack ? adapter.log.debug(`stateChange ${id} = ${JSON.stringify(state)}`) : null;
         if (state && !state.ack) {
             var as = id.split('.');
             if (`${as[0]}.${as[1]}` !== adapter.namespace) return;
-			adapter.log.debug(`stateChange ${id} = ${JSON.stringify(state)}`)
             switch (as[2]) {
                 case 'command':
                     send(state.val, function callback(err) {
@@ -89,11 +91,9 @@ var adapter = utils.Adapter({
 //
 //  F U N C T I O N S
 //
-//#####################################################################################
-//   M A I N   
+//##########   M A I N   ##############################################################
 async function main() {
-	abortMain = false;
-
+	AbortMain = false;
 //########### TYPE 'Samsung2016' ######################################################
     if (adapter.config.apiType === 'Samsung2016') {
         remote2016 = new Samsung2016({ ip: adapter.config.ip, timeout: 2000 });
@@ -116,7 +116,7 @@ async function main() {
         }
 //########### TYPE 'SamsungTV' ######################################################
     } else if (adapter.config.apiType === 'SamsungTV') {
-        var remoteSTV = new SamsungTV(adapter.config.ip, adapter.config.mac); //adapter.config.token ? undefined : 
+        var remoteSTV = new SamsungTV(adapter.config.ip, /*adapter.config.token ? undefined : */adapter.config.mac);
         if (adapter.config.token) {
             remoteSTV.token = adapter.config.token;
         }
@@ -146,44 +146,38 @@ async function main() {
             await remoteSTV.sendKey(cmd);
             cb && cb();
         }};
+		
         createObjectsAndStates();
 		
 //########### TYPE 'SamsungHJ' ######################################################
-    } else if (adapter.config.apiType === 'SamsungHJ') {		 
-        const reachable = await new Promise(res => { 
+    } else if (adapter.config.apiType === 'SamsungHJ') {
+		const reachable = await new Promise(res => { 
 			ping.probe(adapter.config.ip, { timeout: 2000 }, (err, r) => res(!err && r && r.alive)); 
 		}); 
 		if (!reachable) { 
-			adapter.log.debug(`${adapter.config.apiType}: TV unreachable → skipping connect attempt`); 
+			adapter.log.debug('SamsungHJ: TV unreachable → skipping connect attempt'); 
 			if (!checkOnOffTimer) { checkPowerOnOff(); }
 			return; // WICHTIG: main() NICHT ausführen
 		}
+							 
+        if (adapter.config.ip) {
 
-		if (adapter.config.ip) {
             adapter.log.debug('Initializing HJ lib');
             deviceConfig.ip = adapter.config.ip;
             remoteHJ = new SamsungHJ(deviceConfig);
-			//createObjectsAndStates();  // neu 01.2026
+			createObjectsAndStates();  // neu 01.2026
 			
 			// Events kommen über den internen EventEmitter der SamsungTv-Klasse
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTING, () => {
     			adapter.log.debug('Websocket reports CONNECTING');
-    			// WebSocket ist offen, aber DUID/Handshake noch nicht abgeschlossen
-    			Connecting = true;
-			});
-
-			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTED, () => {
-    			adapter.log.info('Websocket reports CONNECTED (TV fully ready)');
-    			Connected = true;
-    			Connecting = false;
-    			adapter.setState('info.connected', true, true);
+  			    Connected = true;
+			    adapter.setState('info.connected', true, true);
 			});
 
 			remoteHJ.eventEmitter.on(SamsungTvEvents.DISCONNECTED, () => {
     			adapter.log.warn('Websocket reports DISCONNECTED');
     			Connected = false;
-    			Connecting = false;
-				abortMain = true;
+				AbortMain = true;
     			adapter.setState('info.connected', false, true);
 
       		// Reconnect starten, aber nur wenn nicht schon versucht wird
@@ -202,10 +196,11 @@ async function main() {
                 if (adapter.config.pin) {
                     try {
                         await remoteHJ.confirmPin(adapter.config.pin);
-						if (abortMain) return;
+						if (AbortMain) return;
                         await remoteHJ.connect();
-						if (abortMain) return;
-                        	
+						if (AbortMain) return;
+                        //createObjectsAndStates(); // // neu 01.2026
+							
                         remote = { powerKey: 'KEY_POWERON', 
 								   send: (cmd, cb) => {
                                 		remoteHJ.sendKey(cmd);
@@ -216,7 +211,6 @@ async function main() {
 						Connected = true;
 						adapter.setState('info.connected', true, true);
                         adapter.log.info('Successfully connected to your Samsung HJ TV ');
-						createObjectsAndStates(); // neu 01.2026
                     } catch (err) {
 						Connected = false;
 						adapter.setState('info.connected', false, true);

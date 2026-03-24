@@ -175,7 +175,7 @@ async function main() {
 			// Events are received through the internal EventEmitter of the SamsungTv class
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTING, () => {
     			adapter.log.debug('Websocket reports CONNECTING');
-			// WebSocket ist offen, aber DUID/Handshake noch nicht abgeschlossen
+			// WebSocket opened, but DUID/Handshake not completedn
     			connecting = true;
 			});
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTED, () => {
@@ -203,7 +203,7 @@ async function main() {
 
             try {
                 const resp = await remoteHJ.init2();
-                adapter.log.info('connection to TV initialised');
+                adapter.log.info('Connection to TV initialised');
 
                 if (adapter.config.pin) {
                     try {

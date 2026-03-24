@@ -45,9 +45,6 @@ if something does not work, look  in the log.
 	Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### 0.6.2 (2024-12-01)
-* (marian-t-web-de) Reconect after Error connecting to Samsung HJ Series TV
-
 ### 0.6.1 (2024-09-28)
 * (marian-t-web-de) Sending a key to TV logged an error [#210]
 * (marian-t-web-de) Error connecting to Samsung HJ Series TV has been fixed [#202] [#138]

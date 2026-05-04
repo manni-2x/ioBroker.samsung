@@ -73,7 +73,7 @@ var adapter = utils.Adapter({
                         case 'on':      onOn(true);        return;
                         case 'off':     onOn(false);       return;
                         case 'checkOnOff':
-                        case 'checkOn': checkPowerOnOff(); return;
+                        case 'checkOn': checkPowerOnOff(true); return; //05.2025
                         default: // let fall through for others
                     }
 				break;
@@ -258,7 +258,7 @@ async function main() {
             adapter.log.error('No IP defined')
         }
 
-    } else {
+    } else { // try default SamsungRemote
         try {
             remote = new SamsungRemote({ip: adapter.config.ip});
         } catch (err) {
@@ -268,8 +268,9 @@ async function main() {
         }
         remote.powerKey = 'KEY_POWEROFF';
         createObjectsAndStates();
-		if (!checkOnOffTimer) { checkPowerOnOff(); }
+		//if (!checkOnOffTimer) { checkPowerOnOff(); }  //05.2025 Gemini
     }
+	if (!checkOnOffTimer) { checkPowerOnOff(); }  //05.2025 all apiType's; Gemini
 }  //  async function main() {
 
 async function call_main() {
@@ -296,8 +297,44 @@ function isOn(callback) {
 }
 
 let lastOn = undefined;
+function checkPowerOnOff(force = false) { // new 05.2026 Gemini
+    adapter.log.debug('Checking power on/off state ...');
+    if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
 
-function checkPowerOnOff() {  // new 01.2026
+    isOn(on => {
+        adapter.log.debug(`Power check: on=${on}, lastOn=${lastOn}, force=${force}`);
+
+        // Setze den Status, wenn er sich geändert hat ODER wenn es ein manueller Trigger (force) war
+        if (lastOn !== on || force) {
+            if (on) {
+                adapter.setState(powerOnOffState, 'ON', true);
+                setStateNe('Power.on', true, true);
+                setStateNe('Power.off', false, true); //05.2025 Synchronisiere Power.off
+
+                // Falls noch nicht verbunden, versuche Verbindung
+                if (!connected && !connectTimer) {
+                    connectTimer = setTimeout(() => {
+                        connectTimer = null;
+                        call_main();
+                    }, 5000);
+                }
+            } else {
+                adapter.setState(powerOnOffState, 'OFF', true);
+                setStateNe('Power.on', false, true);
+                setStateNe('Power.off', true, true); // Synchronisiere Power.off
+
+                connected = false;
+                adapter.setState('info.connected', false, true);
+            }
+            lastOn = on;
+        }
+
+        // WICHTIG: Der Timer muss immer laufen, um den Status aktuell zu halten, 
+        // unabhängig davon, ob wir gerade "connected" sind oder nicht.
+        checkOnOffTimer = setTimeout(() => checkPowerOnOff(false), 15000);
+    });
+}
+function _checkPowerOnOff() {  // new 01.2026
     adapter.log.debug('Checking power on/off state ...');
     if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
 

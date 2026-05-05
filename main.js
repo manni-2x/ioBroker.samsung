@@ -1,6 +1,6 @@
 'use strict';
 
-// const { KEY_VOLDOWN, KEY_MUTE } = require('./keys'); // Unused imports, kept for potential future use
+const { KEY_VOLDOWN, KEY_MUTE } = require('./keys');
 
 //const utils = require(`${__dirname}/lib/utils`);
 const utils = require('@iobroker/adapter-core');
@@ -30,7 +30,7 @@ let count     = 0;        // new 11.2024
 let powerOn   = false;
 let abortMain = false;
 
-// --- Connection control (NEW) ---  //new 1.2026
+// --- connection control (NEW) ---  //new 1.2026
 let connecting   = false;
 let connected    = false;
 let connectTimer = null;
@@ -44,7 +44,7 @@ var adapter = utils.Adapter({
     name: 'samsung',
 
     unload: function (callback) {
-        try {
+		try {
         	if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
         	if (connectTimer) clearTimeout(connectTimer);
         	if (onOffTimer) clearTimeout(onOffTimer);
@@ -73,7 +73,7 @@ var adapter = utils.Adapter({
                         case 'on':      onOn(true);        return;
                         case 'off':     onOn(false);       return;
                         case 'checkOnOff':
-                        case 'checkOn': checkPowerOnOff(true); return; //05.2025
+                        case 'checkOn': checkPowerOnOff(true); return; //05.2025 Gemini
                         default: // let fall through for others
                     }
 				break;
@@ -163,7 +163,7 @@ async function main() {
 		if (!reachable) { 
 			adapter.log.debug(`${adapter.config.apiType}: TV unreachable → skipping connect attempt`); 
 			if (!checkOnOffTimer) { checkPowerOnOff(); }
-			return; //  IMPORTANT: do NOT execute main()
+			return; // IMPORTANT: do NOT execute main()
 		}
 
 		if (adapter.config.ip) {
@@ -171,22 +171,20 @@ async function main() {
             deviceConfig.ip = adapter.config.ip;
 			if (remoteHJ?.eventEmitter) remoteHJ.eventEmitter.removeAllListeners();
             remoteHJ = new SamsungHJ(deviceConfig);
-			//createObjectsAndStates();  // neu 01.2026
 			
 			// Events are received through the internal EventEmitter of the SamsungTv class
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTING, () => {
     			adapter.log.debug('Websocket reports CONNECTING');
-    			// WebSocket opened, but DUID/Handshake not comlpeted yetn
+			// WebSocket opened, but DUID/Handshake not completed
     			connecting = true;
 			});
-
 			remoteHJ.eventEmitter.on(SamsungTvEvents.CONNECTED, () => {
     			adapter.log.info('Websocket reports CONNECTED (TV fully ready)');
-    			connected = true;
+    			cnt = 0;
+				connected = true;
     			connecting = false;
     			adapter.setState('info.connected', true, true);
 			});
-
 			remoteHJ.eventEmitter.on(SamsungTvEvents.DISCONNECTED, () => {
     			adapter.log.warn('Websocket reports DISCONNECTED');
     			connected = false;
@@ -258,19 +256,19 @@ async function main() {
             adapter.log.error('No IP defined')
         }
 
-    } else { // try default SamsungRemote
+    } else {
         try {
             remote = new SamsungRemote({ip: adapter.config.ip});
         } catch (err) {
-            adapter.log.error(`Connection to TV failed. Is the IP correct? Is the TV switched on?  ${err.message}`)
+            adapter.log.error(`connection to TV failed. Is the IP correct? Is the TV switched on?  ${err.message}`)
             adapter.log.error(err.stack);
             return;
         }
         remote.powerKey = 'KEY_POWEROFF';
         createObjectsAndStates();
-		//if (!checkOnOffTimer) { checkPowerOnOff(); }  //05.2025 Gemini
-    }
-	if (!checkOnOffTimer) { checkPowerOnOff(); }  //05.2025 all apiType's; Gemini
+	}
+	if (!checkOnOffTimer) { checkPowerOnOff();  //05.2025 Gemini
+  //}
 }  //  async function main() {
 
 async function call_main() {
@@ -297,54 +295,19 @@ function isOn(callback) {
 }
 
 let lastOn = undefined;
-function checkPowerOnOff(force = false) { // new 05.2026 Gemini
-    adapter.log.debug('Checking power on/off state ...');
-    if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
 
-    isOn(on => {
-        adapter.log.debug(`Power check: on=${on}, lastOn=${lastOn}, force=${force}`);
-
-        // Setze den Status, wenn er sich geändert hat ODER wenn es ein manueller Trigger (force) war
-        if (lastOn !== on || force) {
-            if (on) {
-                adapter.setState(powerOnOffState, 'ON', true);
-                setStateNe('Power.on', true, true);
-                setStateNe('Power.off', false, true); //05.2025 Synchronisiere Power.off
-
-                // Falls noch nicht verbunden, versuche Verbindung
-                if (!connected && !connectTimer) {
-                    connectTimer = setTimeout(() => {
-                        connectTimer = null;
-                        call_main();
-                    }, 5000);
-                }
-            } else {
-                adapter.setState(powerOnOffState, 'OFF', true);
-                setStateNe('Power.on', false, true);
-                setStateNe('Power.off', true, true); // Synchronisiere Power.off
-
-                connected = false;
-                adapter.setState('info.connected', false, true);
-            }
-            lastOn = on;
-        }
-
-        // WICHTIG: Der Timer muss immer laufen, um den Status aktuell zu halten, 
-        // unabhängig davon, ob wir gerade "connected" sind oder nicht.
-        checkOnOffTimer = setTimeout(() => checkPowerOnOff(false), 15000);
-    });
-}
-function _checkPowerOnOff() {  // new 01.2026
+function checkPowerOnOff(force = false) {  // new 05.2026 Gemini
     adapter.log.debug('Checking power on/off state ...');
     if (checkOnOffTimer) clearTimeout(checkOnOffTimer);
 
     isOn(on => {
         adapter.log.debug(`Power check: on=${on}, lastOn=${lastOn}`);
 
-        if (lastOn !== on) {
+        if (lastOn !== on || force) {
             if (on) {
                 adapter.setState(powerOnOffState, 'ON', true);
                 setStateNe('Power.on', true, true);
+				setStateNe('Power.off', false, true); //05.2025 Synchronisiere Power.off
 
                 if (!connected && !connectTimer) {
                     connectTimer = setTimeout(() => {
@@ -355,6 +318,7 @@ function _checkPowerOnOff() {  // new 01.2026
             } else {
                 adapter.setState(powerOnOffState, 'OFF', true);
                 setStateNe('Power.on', false, true);
+				setStateNe('Power.off', true, true); // 05.2025 Synchronisiere Power.off
 
                 connected = false;
                 adapter.setState('info.connected', false, true);
@@ -365,6 +329,7 @@ function _checkPowerOnOff() {  // new 01.2026
         if (!connected) checkOnOffTimer = setTimeout(checkPowerOnOff, 15000);
     });
 }
+
 //var onOffTimer;
 function onOn(val) {
 	if (!remoteHJ && adapter.config.apiType === 'SamsungHJ') {
@@ -377,7 +342,7 @@ function onOn(val) {
 	
 	isOn(function (running) {
         if (!remote) {
-            adapter.log.error('Connection to Samsung device not initialized, no command execution possible.');
+            adapter.log.error('connection to Samsung device not initialized, no command execution possible.');
             return;
         }
         if (running === val) {
@@ -418,7 +383,7 @@ function send(command, callback) {
     }
     adapter.log.debug(`Executing command: ${command}`);
     try {
-        remote.send(command, callback || function nop() {});
+        remote.send(command, callback || function nop() { });
     } catch (e) {
         adapter.log.error(`Error executing command: ${command}: ${e.message}`);
     }
@@ -444,46 +409,34 @@ function setStateNe(id, val, ack) {
     });
 }
 
-function createObj(name, val, type, role, desc) {
-    if (role === undefined) {
-        role = type !== 'channel' ? 'button' : '';
-    }
-    adapter.setObjectNotExists(
-        name,
-        {
-            type: type,
-            common: {
-                name: name,
-                type: 'boolean',
-                role: role,
-                def: false,
-                read: true,
-                write: true,
-                desc: desc,
-            },
-            native: { command: val },
-        },
-        function (_err, _obj) {
-            if (type !== 'channel') {
-                adapter.setState(name, false, true);
-            }
-        },
-    );
-}
-
 function saveModel2016(val, callback) {
-    adapter.getForeignObject(`system.adapter.${adapter.namespace}`, function (_err, obj) {
-        if (!_err && obj && !obj.native) {
-            obj['native'] = {};
-        }
-        if (obj.native.model2016 === val) {
-            return callback && callback();
-        }
+    adapter.getForeignObject(`system.adapter.${adapter.namespace}`, function (err, obj) {
+        if (!err && obj && !obj.native) obj['native'] = {};
+        if (obj.native.model2016 === val) return callback && callback();
         obj.native.model2016 = val;
         adapter.config.model2016 = val;
-        adapter.setForeignObject(obj._id, obj, {}, function (_err2, _s_obj) {
+        adapter.setForeignObject(obj._id, obj, {}, function (err, s_obj) {
             callback && callback('changed');
         });
+    });
+}
+
+function createObj(name, val, type, role, desc) {
+    if (role === undefined) role = type !== 'channel' ? 'button' : '';
+    adapter.setObjectNotExists(name, {
+        type: type,
+        common: {
+            name: name,
+            type: 'boolean',
+            role: role,
+            def: false,
+            read: true,
+            write: true,
+            desc: desc
+        },
+        native: { command: val }
+    }, function (err, obj) {
+        if (type !== 'channel') adapter.setState(name, false, true);
     });
 }
 
@@ -494,7 +447,8 @@ function createObjectsAndStates() {
         if (Keys[key] === null) {
             channel = key;
             createObj(key, '', 'channel');
-        } else {
+        }
+        else {
             commandValues.push(key);
             createObj(`${channel}.${Keys[key]}`, key, 'state');
         }
@@ -503,28 +457,21 @@ function createObjectsAndStates() {
     createObj('Power.off', false, 'state', 'state', 'Only if TV is on the power command will be send');
     createObj('Power.on', false, 'state', 'state', 'Indicated power status or turn on if not already turned on');
 
-    adapter.setObjectNotExists(
-        'command',
-        {
-            type: 'state',
-            common: {
-                name: 'command',
-                type: 'string',
-                role: 'state',
-                desc: 'KEY_xxx',
-                values: commandValues,
-                states: commandValues,
-            },
-            native: {},
-        },
-        function (_err, _obj) {
-            adapter.setState('command', '', true /*{ ack: true }*/);
+    adapter.setObjectNotExists('command', {
+        type: 'state',
+        common: {
+            name: 'command',
+            type: 'string',
+            role: 'state',
+            desc: 'KEY_xxx',
+            values: commandValues,
+            states: commandValues
         },
         native: {
-            ts: new Date().getTime()
+			  ts: new Date().getTime()
         }
     }, function (err, obj) {
-        adapter.setState(powerOnOffState, '', true); //ack: true 
+        adapter.setState('command', '', true); //ack: true
     });
 	
     adapter.setObjectNotExists(powerOnOffState, {
@@ -541,18 +488,20 @@ function createObjectsAndStates() {
     }, function (err, obj) {
         adapter.setState(powerOnOffState, '', true); //ack: true 
     });
-
+	
 	adapter.setObjectNotExists('info.connected', {
     	type: 'state',
     	common: {
-        	name: 'Connection status',
+        	name: 'connection status',
         	type: 'boolean',
         	role: 'indicator.connected',
         	read: true,
         	write: false,
         	def: false
     	},
-    	native: {}
+    	native: {
+			ts: new Date().getTime()
+		}
 	}, () => {
     	adapter.setState('info.connected', false, true);
 	});

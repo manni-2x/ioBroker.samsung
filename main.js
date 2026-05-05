@@ -266,8 +266,8 @@ async function main() {
         }
         remote.powerKey = 'KEY_POWEROFF';
         createObjectsAndStates();
-	}
-	if (!checkOnOffTimer) { checkPowerOnOff();  //05.2025 Gemini
+	}                                         //+05.2025 Gemini
+	if (!checkOnOffTimer) checkPowerOnOff();  //05.2025 Gemini
   //}
 }  //  async function main() {
 

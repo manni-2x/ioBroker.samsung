@@ -220,9 +220,9 @@ async function main() {
                             
 						count = 0;  // reset repeat counter
 						connected = true;
-						adapter.setState('info.connected', true, true);
                         adapter.log.info('Successfully connected to your Samsung HJ TV ');
 						createObjectsAndStates(); // neu 01.2026
+						adapter.setState('info.connected', true, true); // 09.2026
                     } catch (err) {
 						connected = false;
 						adapter.setState('info.connected', false, true);
@@ -471,7 +471,7 @@ function createObjectsAndStates() {
 			  ts: new Date().getTime()
         }
     }, function (err, obj) {
-        adapter.setState('command', '', true); //ack: true
+        if(obj) adapter.setState('command', '', true); //ack: true
     });
 	
     adapter.setObjectNotExists(powerOnOffState, {
@@ -486,7 +486,7 @@ function createObjectsAndStates() {
             ts: new Date().getTime()
         }
     }, function (err, obj) {
-        adapter.setState(powerOnOffState, '', true); //ack: true 
+        if(obj) adapter.setState(powerOnOffState, '', true); //ack: true 
     });
 	
 	adapter.setObjectNotExists('info.connected', {
@@ -502,8 +502,8 @@ function createObjectsAndStates() {
     	native: {
 			ts: new Date().getTime()
 		}
-	}, () => {
-    	adapter.setState('info.connected', false, true);
+	}, (err, obj) => {
+    	if(obj) adapter.setState('info.connected', false, true);
 	});
 	
     adapter.subscribeStates('*');

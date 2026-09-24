@@ -221,7 +221,7 @@ async function main() {
 						count = 0;  // reset repeat counter
 						connected = true;
                         adapter.log.info('Successfully connected to your Samsung HJ TV ');
-						createObjectsAndStates(); // neu 01.2026
+						createObjectsAndStates();  // neu 01.2026
 						adapter.setState('info.connected', true, true); // 09.2026
                     } catch (err) {
 						connected = false;
